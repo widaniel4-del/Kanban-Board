@@ -41,3 +41,12 @@ export async function signOutUser() {
 
   return true
 }
+
+/* compatibility helper for older files like UseTasks.tsx */
+export async function ensureGuestSession() {
+  const session = await getCurrentSession()
+  if (session) return true
+
+  const newSession = await signInAsGuest()
+  return !!newSession
+}
