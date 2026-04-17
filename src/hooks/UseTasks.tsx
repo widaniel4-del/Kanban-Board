@@ -24,8 +24,11 @@ export function useTasks() {
         setErrorMessage("")
 
         const signedIn = await ensureGuestSession()
+
         if (!signedIn) {
-          if (mounted) setErrorMessage("Guest sign-in is not enabled in Supabase.")
+          if (mounted) {
+            setErrorMessage("Guest sign-in is not enabled in Supabase.")
+          }
           return
         }
 
@@ -37,20 +40,8 @@ export function useTasks() {
 
     initialize()
 
-    const channel = supabase
-      .channel("tasks-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tasks" },
-        async () => {
-          await fetchTasks()
-        }
-      )
-      .subscribe()
-
     return () => {
       mounted = false
-      supabase.removeChannel(channel)
     }
   }, [])
 

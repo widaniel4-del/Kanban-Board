@@ -68,3 +68,12 @@ export async function signOutUser() {
 
   return true
 }
+
+/* compatibility helper for older files like UseTasks.tsx */
+export async function ensureGuestSession() {
+  const existingSession = await getCurrentSession()
+  if (existingSession) return true
+
+  const result = await signInAsGuest()
+  return !!result.session
+}
