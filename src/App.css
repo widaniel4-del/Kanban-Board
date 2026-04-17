@@ -217,7 +217,6 @@ body {
   border-radius: 999px;
   font-size: 12px;
 }
-
 .task-list {
   display: flex;
   flex-direction: column;
@@ -225,21 +224,81 @@ body {
 }
 
 .task-card {
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(30, 41, 59, 0.75);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(12, 28, 56, 0.96) 0%, rgba(10, 23, 46, 0.96) 100%);
+  border: 1px solid rgba(110, 140, 190, 0.22);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
   cursor: grab;
-  transition: 0.2s;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .task-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
+  border-color: rgba(129, 140, 248, 0.28);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
 }
 
 .task-card:active {
   cursor: grabbing;
+}
+
+.task-card-dragging {
+  opacity: 0.6;
+}
+
+.task-card h3 {
+  margin: 0 0 22px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.01em;
+}
+
+.task-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.priority,
+.due-date-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.priority-low {
+  background: rgba(34, 197, 94, 0.18);
+  color: #9ae6b4;
+}
+
+.priority-normal {
+  background: rgba(250, 204, 21, 0.2);
+  color: #f6d96b;
+}
+
+.priority-high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff9c9c;
+}
+
+.due-date-pill.overdue {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ffb0b0;
+}
+
+.due-date-pill.due-soon {
+  background: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
 }
 
 .empty-state {

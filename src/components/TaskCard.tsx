@@ -31,10 +31,6 @@ function isTaskOverdue(task: Task) {
 
 export default function TaskCard({
   task,
-  teamMembers,
-  labels,
-  taskAssignees,
-  taskLabels,
   onClick,
 }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -49,22 +45,6 @@ export default function TaskCard({
 
   const overdue = isTaskOverdue(task)
 
-  const assignedMemberIds = taskAssignees
-    .filter((item) => item.task_id === task.id)
-    .map((item) => item.member_id)
-
-  const assignedMembers = teamMembers.filter((member) =>
-    assignedMemberIds.includes(member.id)
-  )
-
-  const assignedLabelIds = taskLabels
-    .filter((item) => item.task_id === task.id)
-    .map((item) => item.label_id)
-
-  const assignedLabels = labels.filter((label) =>
-    assignedLabelIds.includes(label.id)
-  )
-
   return (
     <div
       ref={setNodeRef}
@@ -75,39 +55,6 @@ export default function TaskCard({
       onClick={onClick}
     >
       <h3>{task.title}</h3>
-
-      {task.description && (
-        <p className="task-description">{task.description}</p>
-      )}
-
-      {assignedLabels.length > 0 && (
-        <div className="task-labels">
-          {assignedLabels.map((label) => (
-            <span
-              key={label.id}
-              className="task-label-pill"
-              style={{ backgroundColor: label.color ?? "#334155" }}
-            >
-              {label.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {assignedMembers.length > 0 && (
-        <div className="task-assignees">
-          {assignedMembers.map((member) => (
-            <div
-              key={member.id}
-              className="task-avatar"
-              style={{ backgroundColor: member.avatar_color ?? "#6366f1" }}
-              title={member.name}
-            >
-              {member.name.charAt(0).toUpperCase()}
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="task-meta">
         <span className={`priority priority-${task.priority}`}>
