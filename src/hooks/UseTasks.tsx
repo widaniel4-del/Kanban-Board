@@ -112,12 +112,13 @@ export function useTasks() {
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
+
     if (!over) return
 
     const taskId = String(active.id)
     const newStatus = String(over.id) as TaskStatus
-    const existingTask = tasks.find((task) => task.id === taskId)
 
+    const existingTask = tasks.find((task) => task.id === taskId)
     if (!existingTask || existingTask.status === newStatus) return
 
     const previousTasks = tasks
