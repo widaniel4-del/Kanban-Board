@@ -30,6 +30,7 @@ export async function signInAsGuest() {
 
   return { success: true, error: null, session: data.session }
 }
+
 export async function signInWithEmail(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -57,7 +58,6 @@ export async function signOutUser() {
   return true
 }
 
-/* compatibility helper for older files still importing it */
 export async function ensureGuestSession() {
   const existingSession = await getCurrentSession()
   if (existingSession) return true
