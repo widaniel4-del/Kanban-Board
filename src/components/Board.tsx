@@ -1,11 +1,11 @@
-import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import type { Task, TaskStatus } from "../types/task"
+import type {
+  Label,
+  Task,
+  TaskAssignee,
+  TaskLabel,
+  TaskStatus,
+  TeamMember,
+} from "../types/task"
 import BoardColumn from "./Column"
 
 const columns: { id: TaskStatus; title: string }[] = [
@@ -16,31 +16,37 @@ const columns: { id: TaskStatus; title: string }[] = [
 ]
 
 type BoardProps = {
-  tasksByStatus: Record<TaskStatus, Task[]>
-  onDragEnd: (event: DragEndEvent) => void
+  tasks: Task[]
+  teamMembers: TeamMember[]
+  labels: Label[]
+  taskAssignees: TaskAssignee[]
+  taskLabels: TaskLabel[]
+  onSelectTask: (task: Task) => void
 }
 
-export default function Board({ tasksByStatus, onDragEnd }: BoardProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 6,
-      },
-    })
-  )
-
+export default function Board({
+  tasks,
+  teamMembers,
+  labels,
+  taskAssignees,
+  taskLabels,
+  onSelectTask,
+}: BoardProps) {
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="board">
-        {columns.map((col) => (
-          <BoardColumn
-            key={col.id}
-            id={col.id}
-            title={col.title}
-            tasks={tasksByStatus[col.id]}
-          />
-        ))}
-      </div>
-    </DndContext>
+    <div className="board">
+      {columns.map((col) => (
+        <BoardColumn
+          key={col.id}
+          id={col.id}
+          title={col.title}
+          tasks={tasks.filter((task) => task.status === col.id)}
+          teamMembers={teamMembers}
+          labels={labels}
+          taskAssignees={taskAssignees}
+          taskLabels={taskLabels}
+          onSelectTask={onSelectTask}
+        />
+      ))}
+    </div>
   )
 }
