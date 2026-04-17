@@ -4,8 +4,8 @@ import type { Label, TeamMember } from "../types/task"
 type TeamPanelProps = {
   teamMembers: TeamMember[]
   labels: Label[]
-  onCreateMember: (name: string, color: string) => Promise<void>
-  onCreateLabel: (name: string, color: string) => Promise<void>
+  onCreateMember: (name: string, color: string) => void
+  onCreateLabel: (name: string, color: string) => void
 }
 
 export default function TeamPanel({
@@ -15,38 +15,52 @@ export default function TeamPanel({
   onCreateLabel,
 }: TeamPanelProps) {
   const [memberName, setMemberName] = useState("")
-  const [memberColor, setMemberColor] = useState("#6366f1")
+  const [memberColor, setMemberColor] = useState("#6c63ff")
+
   const [labelName, setLabelName] = useState("")
   const [labelColor, setLabelColor] = useState("#f59e0b")
 
-  return (
-    <section className="side-panel-grid">
-      <div className="side-panel-card">
-        <h3>Team Members</h3>
+  function handleMemberSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!memberName.trim()) return
 
-        <form
-          className="mini-form"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            await onCreateMember(memberName, memberColor)
-            setMemberName("")
-            setMemberColor("#6366f1")
-          }}
-        >
+    onCreateMember(memberName, memberColor)
+    setMemberName("")
+    setMemberColor("#6c63ff")
+  }
+
+  function handleLabelSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!labelName.trim()) return
+
+    onCreateLabel(labelName, labelColor)
+    setLabelName("")
+    setLabelColor("#f59e0b")
+  }
+
+  return (
+    <section className="team-panels">
+      <div className="panel-card">
+        <h2 className="panel-title">Team Members</h2>
+
+        <form className="panel-form" onSubmit={handleMemberSubmit}>
           <input
-            className="input"
             type="text"
+            className="panel-input"
             placeholder="Add team member"
             value={memberName}
             onChange={(e) => setMemberName(e.target.value)}
           />
+
           <input
-            className="color-input"
             type="color"
+            className="panel-color"
             value={memberColor}
             onChange={(e) => setMemberColor(e.target.value)}
+            aria-label="Choose member color"
           />
-          <button className="secondary-button" type="submit">
+
+          <button type="submit" className="panel-button">
             Add
           </button>
         </form>
@@ -55,43 +69,38 @@ export default function TeamPanel({
           {teamMembers.map((member) => (
             <div key={member.id} className="member-chip">
               <span
-                className="assignee-avatar"
-                style={{ backgroundColor: member.color }}
+                className="member-avatar"
+                style={{ backgroundColor: member.avatar_color || "#6c63ff" }}
               >
                 {member.name.charAt(0).toUpperCase()}
               </span>
-              <span>{member.name}</span>
+              <span className="member-name">{member.name}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="side-panel-card">
-        <h3>Labels</h3>
+      <div className="panel-card">
+        <h2 className="panel-title">Labels</h2>
 
-        <form
-          className="mini-form"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            await onCreateLabel(labelName, labelColor)
-            setLabelName("")
-            setLabelColor("#f59e0b")
-          }}
-        >
+        <form className="panel-form" onSubmit={handleLabelSubmit}>
           <input
-            className="input"
             type="text"
+            className="panel-input"
             placeholder="Add label"
             value={labelName}
             onChange={(e) => setLabelName(e.target.value)}
           />
+
           <input
-            className="color-input"
             type="color"
+            className="panel-color"
             value={labelColor}
             onChange={(e) => setLabelColor(e.target.value)}
+            aria-label="Choose label color"
           />
-          <button className="secondary-button" type="submit">
+
+          <button type="submit" className="panel-button">
             Add
           </button>
         </form>
@@ -100,8 +109,8 @@ export default function TeamPanel({
           {labels.map((label) => (
             <span
               key={label.id}
-              className="task-label"
-              style={{ backgroundColor: label.color }}
+              className="label-chip"
+              style={{ backgroundColor: label.color || "#f59e0b" }}
             >
               {label.name}
             </span>
