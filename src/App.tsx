@@ -1,5 +1,5 @@
 import "./App.css"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { FormEvent } from "react"
 import {
   DndContext,
@@ -8,7 +8,13 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
-import { getCurrentSession, signInAsGuest, signOutUser, supabase } from "./lib/supabase"
+import {
+  getCurrentSession,
+  signInAsGuest,
+  signInWithEmail,
+  signOutUser,
+  supabase,
+} from "./lib/supabase"
 import type {
   ActivityLog,
   Comment,
@@ -44,6 +50,7 @@ function App() {
 
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
@@ -54,12 +61,12 @@ function App() {
   const [priority, setPriority] = useState<TaskPriority>("normal")
   const [dueDate, setDueDate] = useState("")
 
+  const [email, setEmail] = useState("")
+
   const [searchQuery, setSearchQuery] = useState("")
   const [priorityFilter, setPriorityFilter] = useState<"all" | TaskPriority>("all")
   const [assigneeFilter, setAssigneeFilter] = useState("all")
   const [labelFilter, setLabelFilter] = useState("all")
-
-  const initializedRef = useRef(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -70,9 +77,6 @@ function App() {
   )
 
   useEffect(() => {
-    if (initializedRef.current) return
-    initializedRef.current = true
-
     async function initializeApp() {
       try {
         setLoading(true)
@@ -97,28 +101,6 @@ function App() {
 
     initializeApp()
   }, [])
-
-  async function handleGuestLogin() {
-    try {
-      setLoading(true)
-      setErrorMessage("")
-
-      const session = await signInAsGuest()
-
-      if (!session) {
-        setErrorMessage("Could not create guest session.")
-        return
-      }
-
-      setIsAuthenticated(true)
-      await fetchBoardData()
-    } catch (error) {
-      console.error(error)
-      setErrorMessage("Could not start guest session.")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function fetchBoardData() {
     const [
@@ -169,14 +151,66 @@ function App() {
     setTaskAssignees([])
     setTaskLabels([])
     setSelectedTask(null)
+
     setTitle("")
     setDescription("")
     setPriority("normal")
     setDueDate("")
+
     setSearchQuery("")
     setPriorityFilter("all")
     setAssigneeFilter("all")
     setLabelFilter("all")
+  }
+
+  async function handleGuestLogin() {
+    try {
+      setAuthLoading(true)
+      setErrorMessage("")
+
+      const result = await signInAsGuest()
+
+      if (!result.success) {
+        setErrorMessage(result.error ?? "Could not start guest session.")
+        return
+      }
+
+      setIsAuthenticated(true)
+      await fetchBoardData()
+    } catch (error) {
+      console.error(error)
+      setErrorMessage("Could not start guest session.")
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  async function handleEmailLogin(e: FormEvent) {
+    e.preventDefault()
+
+    if (!email.trim()) {
+      setErrorMessage("Email is required.")
+      return
+    }
+
+    try {
+      setAuthLoading(true)
+      setErrorMessage("")
+
+      const result = await signInWithEmail(email.trim())
+
+      if (!result.success) {
+        setErrorMessage(result.error ?? "Could not send magic link.")
+        return
+      }
+
+      setErrorMessage("Check your email for a magic link.")
+    } catch (error) {
+      console.error(error)
+      setErrorMessage("Could not send magic link.")
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   async function handleLogout() {
@@ -233,7 +267,7 @@ function App() {
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      setErrorMessage("Could not identify guest user.")
+      setErrorMessage("Could not identify current user.")
       setCreating(false)
       return
     }
@@ -282,7 +316,7 @@ function App() {
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      setErrorMessage("Could not identify guest user.")
+      setErrorMessage("Could not identify current user.")
       return
     }
 
@@ -525,11 +559,42 @@ function App() {
         <div className="app auth-screen">
           <div className="auth-card">
             <h1>Sunset Flow</h1>
-            <p>Start one guest session and keep using it on this browser until you log out.</p>
-            <button type="button" className="create-button" onClick={handleGuestLogin}>
-              Continue as Guest
+            <p>Choose how you want to get started.</p>
+
+            <form className="auth-form" onSubmit={handleEmailLogin}>
+              <input
+                type="email"
+                className="input"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+
+              <button
+                type="submit"
+                className="create-button"
+                disabled={authLoading}
+              >
+                {authLoading ? "Sending..." : "Continue with Email"}
+              </button>
+            </form>
+
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+
+            <button
+              type="button"
+              className="secondary-button auth-guest-button"
+              onClick={handleGuestLogin}
+              disabled={authLoading}
+            >
+              {authLoading ? "Starting..." : "Continue as Guest"}
             </button>
-            {errorMessage && <div className="status-message error">{errorMessage}</div>}
+
+            {errorMessage && (
+              <div className="status-message error">{errorMessage}</div>
+            )}
           </div>
         </div>
       </div>
@@ -634,7 +699,7 @@ function App() {
 
         {loading && <div className="status-message">Loading board...</div>}
 
-        {!loading && errorMessage && (
+        {!loading && errorMessage && isAuthenticated && (
           <div className="status-message error">{errorMessage}</div>
         )}
 
