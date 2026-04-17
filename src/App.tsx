@@ -1,17 +1,30 @@
 import "./App.css"
 import { useEffect, useMemo, useState } from "react"
+import type { FormEvent } from "react"
 import {
   DndContext,
   PointerSensor,
-  useDraggable,
-  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
-import { CSS } from "@dnd-kit/utilities"
 import { ensureGuestSession, supabase } from "./lib/supabase"
-import type { Task, TaskPriority, TaskStatus } from "./types/task"
+import type {
+  ActivityLog,
+  Comment,
+  Label,
+  Task,
+  TaskAssignee,
+  TaskLabel,
+  TaskPriority,
+  TaskStatus,
+  TeamMember,
+} from "./types/task"
+import BoardSummary from "./components/BoardSummary"
+import FilterBar from "./components/FilterBar"
+import TeamPanel from "./components/TeamPanel"
+import TaskDetailPanel from "./components/TaskDetailPanel"
+import BoardColumn from "./components/Column"
 
 const columns: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "To Do" },
@@ -22,14 +35,28 @@ const columns: { id: TaskStatus; title: string }[] = [
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [comments, setComments] = useState<Comment[]>([])
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
+  const [labels, setLabels] = useState<Label[]>([])
+  const [taskAssignees, setTaskAssignees] = useState<TaskAssignee[]>([])
+  const [taskLabels, setTaskLabels] = useState<TaskLabel[]>([])
+
   const [loading, setLoading] = useState(true)
-  const [errorMessage, setErrorMessage] = useState("")
   const [creating, setCreating] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState<TaskPriority>("normal")
   const [dueDate, setDueDate] = useState("")
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState<"all" | TaskPriority>("all")
+  const [assigneeFilter, setAssigneeFilter] = useState("all")
+  const [labelFilter, setLabelFilter] = useState("all")
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -52,9 +79,9 @@ function App() {
           return
         }
 
-        await fetchTasks()
+        await fetchBoardData()
       } catch (error) {
-        console.error("App initialization failed:", error)
+        console.error(error)
         setErrorMessage("App failed to load.")
       } finally {
         setLoading(false)
@@ -64,22 +91,76 @@ function App() {
     initializeApp()
   }, [])
 
-  async function fetchTasks() {
-    const { data, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .order("created_at", { ascending: false })
+  async function fetchBoardData() {
+    const [
+      tasksRes,
+      membersRes,
+      commentsRes,
+      activityRes,
+      labelsRes,
+      assigneesRes,
+      taskLabelsRes,
+    ] = await Promise.all([
+      supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("team_members")
+        .select("*")
+        .order("created_at", { ascending: true }),
+      supabase.from("comments").select("*").order("created_at", { ascending: true }),
+      supabase
+        .from("activity_logs")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      supabase.from("labels").select("*").order("created_at", { ascending: true }),
+      supabase.from("task_assignees").select("*"),
+      supabase.from("task_labels").select("*"),
+    ])
 
-    if (error) {
-      console.error("Error fetching tasks:", error.message)
-      setErrorMessage(`Could not load tasks: ${error.message}`)
-      return
+    if (
+      tasksRes.error ||
+      membersRes.error ||
+      commentsRes.error ||
+      activityRes.error ||
+      labelsRes.error ||
+      assigneesRes.error ||
+      taskLabelsRes.error
+    ) {
+      throw new Error("Failed to load board data.")
     }
 
-    setTasks((data ?? []) as Task[])
+    setTasks((tasksRes.data ?? []) as Task[])
+    setTeamMembers((membersRes.data ?? []) as TeamMember[])
+    setComments((commentsRes.data ?? []) as Comment[])
+    setActivityLogs((activityRes.data ?? []) as ActivityLog[])
+    setLabels((labelsRes.data ?? []) as Label[])
+    setTaskAssignees((assigneesRes.data ?? []) as TaskAssignee[])
+    setTaskLabels((taskLabelsRes.data ?? []) as TaskLabel[])
   }
 
-  async function handleCreateTask(e: React.FormEvent) {
+  async function logActivity(taskId: string, action: string, details: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from("activity_logs")
+      .insert({
+        task_id: taskId,
+        action,
+        details,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setActivityLogs((prev) => [data as ActivityLog, ...prev])
+    }
+  }
+
+  async function handleCreateTask(e: FormEvent) {
     e.preventDefault()
 
     if (!title.trim()) {
@@ -101,34 +182,159 @@ function App() {
       return
     }
 
-    const newTask = {
-      title: title.trim(),
-      description: description.trim() || null,
-      status: "todo" as TaskStatus,
-      priority,
-      due_date: dueDate || null,
-      user_id: user.id,
-    }
-
     const { data, error } = await supabase
       .from("tasks")
-      .insert(newTask)
+      .insert({
+        title: title.trim(),
+        description: description.trim() || null,
+        status: "todo",
+        priority,
+        due_date: dueDate || null,
+        user_id: user.id,
+      })
       .select()
       .single()
 
     if (error) {
-      console.error("Error creating task:", error.message)
+      console.error(error.message)
       setErrorMessage(`Could not create task: ${error.message}`)
       setCreating(false)
       return
     }
 
     setTasks((prev) => [data as Task, ...prev])
+    await logActivity((data as Task).id, "create", "Created task")
+
     setTitle("")
     setDescription("")
     setPriority("normal")
     setDueDate("")
     setCreating(false)
+  }
+
+  async function handleCreateMember(name: string, color: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user || !name.trim()) return
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .insert({
+        name: name.trim(),
+        color,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setTeamMembers((prev) => [...prev, data as TeamMember])
+    }
+  }
+
+  async function handleCreateLabel(name: string, color: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user || !name.trim()) return
+
+    const { data, error } = await supabase
+      .from("labels")
+      .insert({
+        name: name.trim(),
+        color,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setLabels((prev) => [...prev, data as Label])
+    }
+  }
+
+  async function handleAddComment(taskId: string, body: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user || !body.trim()) return
+
+    const { data, error } = await supabase
+      .from("comments")
+      .insert({
+        task_id: taskId,
+        body: body.trim(),
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setComments((prev) => [...prev, data as Comment])
+      await logActivity(taskId, "comment", "Added a comment")
+    }
+  }
+
+  async function handleAssignMember(taskId: string, memberId: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    const alreadyAssigned = taskAssignees.some(
+      (item) => item.task_id === taskId && item.member_id === memberId
+    )
+
+    if (alreadyAssigned) return
+
+    const { data, error } = await supabase
+      .from("task_assignees")
+      .insert({
+        task_id: taskId,
+        member_id: memberId,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setTaskAssignees((prev) => [...prev, data as TaskAssignee])
+      await logActivity(taskId, "assignment", "Assigned a team member")
+    }
+  }
+
+  async function handleAssignLabel(taskId: string, labelId: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    const alreadyAssigned = taskLabels.some(
+      (item) => item.task_id === taskId && item.label_id === labelId
+    )
+
+    if (alreadyAssigned) return
+
+    const { data, error } = await supabase
+      .from("task_labels")
+      .insert({
+        task_id: taskId,
+        label_id: labelId,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setTaskLabels((prev) => [...prev, data as TaskLabel])
+      await logActivity(taskId, "label", "Added a label")
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -143,6 +349,7 @@ function App() {
     if (!existingTask) return
     if (existingTask.status === newStatus) return
 
+    const oldStatus = existingTask.status
     const previousTasks = tasks
 
     setTasks((prev) =>
@@ -153,14 +360,17 @@ function App() {
 
     const { error } = await supabase
       .from("tasks")
-      .update({ status: newStatus })
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq("id", taskId)
 
     if (error) {
-      console.error("Error updating task status:", error.message)
+      console.error(error.message)
       setErrorMessage(`Could not move task: ${error.message}`)
       setTasks(previousTasks)
+      return
     }
+
+    await logActivity(taskId, "status_change", `Moved from ${oldStatus} → ${newStatus}`)
   }
 
   async function handleClearDoneTasks() {
@@ -180,22 +390,45 @@ function App() {
 
     setTasks((prev) => prev.filter((task) => task.status !== "done"))
 
-    const { error } = await supabase
-      .from("tasks")
-      .delete()
-      .in("id", doneTaskIds)
+    const { error } = await supabase.from("tasks").delete().in("id", doneTaskIds)
 
     if (error) {
-      console.error("Error deleting done tasks:", error.message)
       setErrorMessage(`Could not delete done tasks: ${error.message}`)
       setTasks(previousTasks)
     }
   }
 
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const matchesSearch = task.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+
+      const matchesPriority =
+        priorityFilter === "all" || task.priority === priorityFilter
+
+      const taskMemberIds = taskAssignees
+        .filter((item) => item.task_id === task.id)
+        .map((item) => item.member_id)
+
+      const matchesAssignee =
+        assigneeFilter === "all" || taskMemberIds.includes(assigneeFilter)
+
+      const taskLabelIds = taskLabels
+        .filter((item) => item.task_id === task.id)
+        .map((item) => item.label_id)
+
+      const matchesLabel =
+        labelFilter === "all" || taskLabelIds.includes(labelFilter)
+
+      return matchesSearch && matchesPriority && matchesAssignee && matchesLabel
+    })
+  }, [tasks, searchQuery, priorityFilter, assigneeFilter, labelFilter, taskAssignees, taskLabels])
+
   const groupedTasks = useMemo(() => {
     return columns.reduce<Record<TaskStatus, Task[]>>(
       (acc, col) => {
-        acc[col.id] = tasks.filter((task) => task.status === col.id)
+        acc[col.id] = filteredTasks.filter((task) => task.status === col.id)
         return acc
       },
       {
@@ -205,15 +438,15 @@ function App() {
         done: [],
       }
     )
-  }, [tasks])
+  }, [filteredTasks])
 
   return (
     <div className="app-shell">
       <div className="app">
         <header className="header">
           <div>
-            <h1>Board of Tasks</h1>
-            <p>Plan out your work and be flexible</p>
+            <h1>Sunset Flow</h1>
+            <p>Organize your work at golden hour 🌅</p>
           </div>
 
           <button
@@ -225,6 +458,28 @@ function App() {
             Clear Done
           </button>
         </header>
+
+        <BoardSummary tasks={filteredTasks} />
+
+        <FilterBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          priorityFilter={priorityFilter}
+          setPriorityFilter={setPriorityFilter}
+          assigneeFilter={assigneeFilter}
+          setAssigneeFilter={setAssigneeFilter}
+          labelFilter={labelFilter}
+          setLabelFilter={setLabelFilter}
+          teamMembers={teamMembers}
+          labels={labels}
+        />
+
+        <TeamPanel
+          teamMembers={teamMembers}
+          labels={labels}
+          onCreateMember={handleCreateMember}
+          onCreateLabel={handleCreateLabel}
+        />
 
         <section className="composer-section">
           <form className="task-form" onSubmit={handleCreateTask}>
@@ -286,82 +541,30 @@ function App() {
                   id={col.id}
                   title={col.title}
                   tasks={groupedTasks[col.id]}
+                  teamMembers={teamMembers}
+                  labels={labels}
+                  taskAssignees={taskAssignees}
+                  taskLabels={taskLabels}
+                  onSelectTask={setSelectedTask}
                 />
               ))}
             </div>
           </DndContext>
         )}
-      </div>
-    </div>
-  )
-}
 
-type BoardColumnProps = {
-  id: TaskStatus
-  title: string
-  tasks: Task[]
-}
-
-function BoardColumn({ id, title, tasks }: BoardColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-  })
-
-  return (
-    <div ref={setNodeRef} className={`column ${isOver ? "column-over" : ""}`}>
-      <div className="column-header">
-        <h2>{title}</h2>
-        <span className="count">{tasks.length}</span>
-      </div>
-
-      {tasks.length === 0 ? (
-        <div className="empty-state">Drop a task here</div>
-      ) : (
-        <div className="task-list">
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-type TaskCardProps = {
-  task: Task
-}
-
-function TaskCard({ task }: TaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-    })
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.55 : 1,
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`task-card ${isDragging ? "task-card-dragging" : ""}`}
-      {...listeners}
-      {...attributes}
-    >
-      <h3>{task.title}</h3>
-
-      {task.description && (
-        <p className="task-description">{task.description}</p>
-      )}
-
-      <div className="task-meta">
-        <span className={`priority priority-${task.priority}`}>
-          {task.priority}
-        </span>
-
-        {task.due_date && <span className="due-date">{task.due_date}</span>}
+        <TaskDetailPanel
+          task={selectedTask}
+          comments={comments}
+          activityLogs={activityLogs}
+          teamMembers={teamMembers}
+          labels={labels}
+          taskAssignees={taskAssignees}
+          taskLabels={taskLabels}
+          onClose={() => setSelectedTask(null)}
+          onAddComment={handleAddComment}
+          onAssignMember={handleAssignMember}
+          onAssignLabel={handleAssignLabel}
+        />
       </div>
     </div>
   )

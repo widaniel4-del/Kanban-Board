@@ -8,12 +8,13 @@ type BoardSummaryProps = {
 export default function BoardSummary({ tasks }: BoardSummaryProps) {
   const total = tasks.length
   const completed = tasks.filter((task) => task.status === "done").length
+
   const overdue = tasks.filter(
-  (task) =>
-    task.due_date &&
-    task.status !== "done" &&
-    isBefore(new Date(task.due_date), startOfDay(new Date()))
-).length
+    (task) =>
+      task.due_date &&
+      task.status !== "done" &&
+      isBefore(new Date(task.due_date), startOfDay(new Date()))
+  ).length
 
   return (
     <section className="summary-grid">

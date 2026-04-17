@@ -17,9 +17,7 @@ export async function ensureGuestSession() {
     return false
   }
 
-  if (data.session) {
-    return true
-  }
+  if (data.session) return true
 
   const { error: signInError } = await supabase.auth.signInAnonymously()
 

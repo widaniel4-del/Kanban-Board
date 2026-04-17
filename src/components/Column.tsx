@@ -1,14 +1,35 @@
 import { useDroppable } from "@dnd-kit/core"
-import type { Task, TaskStatus } from "../types/task"
+import type {
+  Label,
+  Task,
+  TaskAssignee,
+  TaskLabel,
+  TaskStatus,
+  TeamMember,
+} from "../types/task"
 import TaskCard from "./TaskCard"
 
-type ColumnProps = {
+type BoardColumnProps = {
   id: TaskStatus
   title: string
   tasks: Task[]
+  teamMembers: TeamMember[]
+  labels: Label[]
+  taskAssignees: TaskAssignee[]
+  taskLabels: TaskLabel[]
+  onSelectTask: (task: Task) => void
 }
 
-export default function Column({ id, title, tasks }: ColumnProps) {
+export default function BoardColumn({
+  id,
+  title,
+  tasks,
+  teamMembers,
+  labels,
+  taskAssignees,
+  taskLabels,
+  onSelectTask,
+}: BoardColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   return (
@@ -19,13 +40,19 @@ export default function Column({ id, title, tasks }: ColumnProps) {
       </div>
 
       {tasks.length === 0 ? (
-        <div className="empty-state">
-          No tasks yet — create your first task 🚀
-        </div>
+        <div className="empty-state">Drop a task here</div>
       ) : (
         <div className="task-list">
           {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              teamMembers={teamMembers}
+              labels={labels}
+              taskAssignees={taskAssignees}
+              taskLabels={taskLabels}
+              onClick={() => onSelectTask(task)}
+            />
           ))}
         </div>
       )}
