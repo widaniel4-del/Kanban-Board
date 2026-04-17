@@ -558,8 +558,8 @@ function App() {
       <div className="app-shell">
         <div className="app auth-screen">
           <div className="auth-card">
-            <h1>Sunset Flow</h1>
-            <p>Choose how you want to get started.</p>
+            <h1>Board of Tasks</h1>
+            <p>Acomplish tasks and innovate with teammates</p>
 
             <form className="auth-form" onSubmit={handleEmailLogin}>
               <input
