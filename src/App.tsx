@@ -131,6 +131,29 @@ function App() {
     setTaskLabels((taskLabelsRes.data ?? []) as TaskLabel[])
   }
 
+  async function handleLogout() {
+    setErrorMessage("")
+
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      console.error(error.message)
+      setErrorMessage(`Could not log out: ${error.message}`)
+      return
+    }
+
+    setTasks([])
+    setTeamMembers([])
+    setComments([])
+    setActivityLogs([])
+    setLabels([])
+    setTaskAssignees([])
+    setTaskLabels([])
+    setSelectedTask(null)
+
+    window.location.reload()
+  }
+
   async function logActivity(taskId: string, action: string, details: string) {
     const {
       data: { user },
@@ -466,14 +489,24 @@ function App() {
             <p>Organize your work at golden hour 🌅</p>
           </div>
 
-          <button
-            type="button"
-            className="clear-done-button"
-            onClick={handleClearDoneTasks}
-            disabled={!tasks.some((task) => task.status === "done")}
-          >
-            Clear Done
-          </button>
+          <div className="header-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+
+            <button
+              type="button"
+              className="clear-done-button"
+              onClick={handleClearDoneTasks}
+              disabled={!tasks.some((task) => task.status === "done")}
+            >
+              Clear Done
+            </button>
+          </div>
         </header>
 
         <BoardSummary tasks={filteredTasks} />
