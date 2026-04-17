@@ -1,5 +1,6 @@
-import { isBefore, startOfDay } from "date-fns"
+import { isBefore } from "date-fns/isBefore"
 import type { Task } from "../types/task"
+import { startOfDay } from "date-fns/startOfDay"
 
 type BoardSummaryProps = {
   tasks: Task[]
