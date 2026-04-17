@@ -57,11 +57,3 @@ export async function signOutUser() {
 
   return true
 }
-
-export async function ensureGuestSession() {
-  const existingSession = await getCurrentSession()
-  if (existingSession) return true
-
-  const result = await signInAsGuest()
-  return !!result.session
-}

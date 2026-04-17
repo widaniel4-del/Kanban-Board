@@ -30,7 +30,7 @@ import BoardSummary from "./components/BoardSummary"
 import FilterBar from "./components/FilterBar"
 import TeamPanel from "./components/TeamPanel"
 import TaskDetailPanel from "./components/TaskDetailPanel"
-import Column from "./components/Column"
+import BoardColumn from "./components/Column"
 
 const columns: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "To Do" },
@@ -535,7 +535,9 @@ function App() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesSearch = task.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
 
       const matchesPriority =
         priorityFilter === "all" || task.priority === priorityFilter
@@ -587,7 +589,7 @@ function App() {
         <div className="app auth-screen">
           <div className="auth-card">
             <h1>Board of Tasks</h1>
-            <p>Acomplish tasks and innovate with teammates</p>
+            <p>Acomplish tasks and innovate with team mates</p>
 
             <form className="auth-form" onSubmit={handleEmailLogin}>
               <input
@@ -644,12 +646,16 @@ function App() {
       <div className="app">
         <header className="header">
           <div>
-            <h1>Sunset Flow</h1>
+            <h1>Board of Tasks</h1>
             <p>Organize your work at golden hour 🌅</p>
           </div>
 
           <div className="header-actions">
-            <button type="button" className="secondary-button" onClick={handleLogout}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleLogout}
+            >
               Logout
             </button>
 
@@ -741,7 +747,7 @@ function App() {
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div className="board">
               {columns.map((col) => (
-                <Column
+                <BoardColumn
                   key={col.id}
                   id={col.id}
                   title={col.title}

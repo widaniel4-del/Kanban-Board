@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import type { DragEndEvent } from "@dnd-kit/core"
-import { ensureGuestSession, supabase } from "../lib/supabase"
+import { getCurrentSession, signInAsGuest, supabase } from "../lib/supabase"
 import type { Task, TaskPriority, TaskStatus } from "../types/task"
 
 const initialGrouped: Record<TaskStatus, Task[]> = {
@@ -23,7 +23,9 @@ export function useTasks() {
         setLoading(true)
         setErrorMessage("")
 
-        const signedIn = await ensureGuestSession()
+        const existingSession = await getCurrentSession()
+        const guestResult = existingSession ? null : await signInAsGuest()
+        const signedIn = !!existingSession || !!guestResult?.session
 
         if (!signedIn) {
           if (mounted) {
