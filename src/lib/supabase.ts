@@ -41,7 +41,6 @@ export async function signInAsGuest() {
 
   return { success: true, error: null, session: data.session }
 }
-
 export async function signInWithEmail(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
