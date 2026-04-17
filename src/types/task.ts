@@ -14,6 +14,7 @@ export type Task = {
 }
 
 export type TeamMember = {
+  avatar_color: string
   id: string
   user_id: string
   name: string
