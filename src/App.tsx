@@ -102,15 +102,9 @@ function App() {
       taskLabelsRes,
     ] = await Promise.all([
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-      supabase
-        .from("team_members")
-        .select("*")
-        .order("created_at", { ascending: true }),
+      supabase.from("team_members").select("*").order("created_at", { ascending: true }),
       supabase.from("comments").select("*").order("created_at", { ascending: true }),
-      supabase
-        .from("activity_logs")
-        .select("*")
-        .order("created_at", { ascending: false }),
+      supabase.from("activity_logs").select("*").order("created_at", { ascending: false }),
       supabase.from("labels").select("*").order("created_at", { ascending: true }),
       supabase.from("task_assignees").select("*"),
       supabase.from("task_labels").select("*"),
@@ -213,25 +207,40 @@ function App() {
   }
 
   async function handleCreateMember(name: string, color: string) {
+    setErrorMessage("")
+
+    if (!name.trim()) {
+      setErrorMessage("Team member name is required.")
+      return
+    }
+
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
 
-    if (!user || !name.trim()) return
+    if (userError || !user) {
+      setErrorMessage("Could not identify guest user.")
+      return
+    }
 
     const { data, error } = await supabase
       .from("team_members")
       .insert({
         name: name.trim(),
-        color,
+        avatar_color: color,
         user_id: user.id,
       })
       .select()
       .single()
 
-    if (!error && data) {
-      setTeamMembers((prev) => [...prev, data as TeamMember])
+    if (error) {
+      console.error(error.message)
+      setErrorMessage(`Could not create team member: ${error.message}`)
+      return
     }
+
+    setTeamMembers((prev) => [...prev, data as TeamMember])
   }
 
   async function handleCreateLabel(name: string, color: string) {
@@ -360,7 +369,7 @@ function App() {
 
     const { error } = await supabase
       .from("tasks")
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .update({ status: newStatus })
       .eq("id", taskId)
 
     if (error) {
@@ -423,7 +432,15 @@ function App() {
 
       return matchesSearch && matchesPriority && matchesAssignee && matchesLabel
     })
-  }, [tasks, searchQuery, priorityFilter, assigneeFilter, labelFilter, taskAssignees, taskLabels])
+  }, [
+    tasks,
+    searchQuery,
+    priorityFilter,
+    assigneeFilter,
+    labelFilter,
+    taskAssignees,
+    taskLabels,
+  ])
 
   const groupedTasks = useMemo(() => {
     return columns.reduce<Record<TaskStatus, Task[]>>(
