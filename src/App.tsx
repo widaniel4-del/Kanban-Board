@@ -30,7 +30,7 @@ import BoardSummary from "./components/BoardSummary"
 import FilterBar from "./components/FilterBar"
 import TeamPanel from "./components/TeamPanel"
 import TaskDetailPanel from "./components/TaskDetailPanel"
-import BoardColumn from "./components/Column"
+import Column from "./components/Column"
 
 const columns: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "To Do" },
@@ -62,6 +62,7 @@ function App() {
   const [dueDate, setDueDate] = useState("")
 
   const [email, setEmail] = useState("")
+  const [lastEmailSentAt, setLastEmailSentAt] = useState<number | null>(null)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [priorityFilter, setPriorityFilter] = useState<"all" | TaskPriority>("all")
@@ -75,6 +76,13 @@ function App() {
       },
     })
   )
+
+  useEffect(() => {
+    const saved = localStorage.getItem("lastEmailSentAt")
+    if (saved) {
+      setLastEmailSentAt(Number(saved))
+    }
+  }, [])
 
   useEffect(() => {
     async function initializeApp() {
@@ -101,6 +109,16 @@ function App() {
 
     initializeApp()
   }, [])
+
+  function updateEmailCooldown(time: number) {
+    setLastEmailSentAt(time)
+    localStorage.setItem("lastEmailSentAt", String(time))
+  }
+
+  const remainingEmailCooldown =
+    lastEmailSentAt && Date.now() - lastEmailSentAt < 60000
+      ? Math.ceil((60000 - (Date.now() - lastEmailSentAt)) / 1000)
+      : 0
 
   async function fetchBoardData() {
     const [
@@ -193,6 +211,13 @@ function App() {
       return
     }
 
+    const now = Date.now()
+
+    if (lastEmailSentAt && now - lastEmailSentAt < 60000) {
+      setErrorMessage("Please wait before requesting another email.")
+      return
+    }
+
     try {
       setAuthLoading(true)
       setErrorMessage("")
@@ -200,11 +225,16 @@ function App() {
       const result = await signInWithEmail(email.trim())
 
       if (!result.success) {
-        setErrorMessage(result.error ?? "Could not send magic link.")
+        if (result.error?.toLowerCase().includes("rate limit")) {
+          setErrorMessage("Email rate limit exceeded. Please wait, or continue as guest.")
+        } else {
+          setErrorMessage(result.error ?? "Could not send magic link.")
+        }
         return
       }
 
-      setErrorMessage("Check your email for a magic link.")
+      updateEmailCooldown(now)
+      setErrorMessage("Check your email for a magic link ✉️")
     } catch (error) {
       console.error(error)
       setErrorMessage("Could not send magic link.")
@@ -505,9 +535,7 @@ function App() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const matchesSearch = task.title
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase())
 
       const matchesPriority =
         priorityFilter === "all" || task.priority === priorityFilter
@@ -573,11 +601,21 @@ function App() {
               <button
                 type="submit"
                 className="create-button"
-                disabled={authLoading}
+                disabled={authLoading || remainingEmailCooldown > 0}
               >
-                {authLoading ? "Sending..." : "Continue with Email"}
+                {authLoading
+                  ? "Sending..."
+                  : remainingEmailCooldown > 0
+                  ? `Wait ${remainingEmailCooldown}s`
+                  : "Continue with Email"}
               </button>
             </form>
+
+            {remainingEmailCooldown > 0 && (
+              <p className="cooldown-text">
+                You can request another email in {remainingEmailCooldown}s.
+              </p>
+            )}
 
             <div className="auth-divider">
               <span>or</span>
@@ -611,11 +649,7 @@ function App() {
           </div>
 
           <div className="header-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleLogout}
-            >
+            <button type="button" className="secondary-button" onClick={handleLogout}>
               Logout
             </button>
 
@@ -707,7 +741,7 @@ function App() {
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div className="board">
               {columns.map((col) => (
-                <BoardColumn
+                <Column
                   key={col.id}
                   id={col.id}
                   title={col.title}

@@ -20,17 +20,6 @@ export async function getCurrentSession() {
   return data.session
 }
 
-export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser()
-
-  if (error) {
-    console.error("Error getting user:", error.message)
-    return null
-  }
-
-  return data.user
-}
-
 export async function signInAsGuest() {
   const { data, error } = await supabase.auth.signInAnonymously()
 
@@ -41,6 +30,7 @@ export async function signInAsGuest() {
 
   return { success: true, error: null, session: data.session }
 }
+
 export async function signInWithEmail(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -68,7 +58,7 @@ export async function signOutUser() {
   return true
 }
 
-/* compatibility helper for older files like UseTasks.tsx */
+/* compatibility helper for older files still importing it */
 export async function ensureGuestSession() {
   const existingSession = await getCurrentSession()
   if (existingSession) return true
