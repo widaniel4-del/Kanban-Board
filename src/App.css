@@ -1,13 +1,14 @@
-/* ---------- RESET & BASE ---------- */
+/* ---------- RESET ---------- */
 
 * {
   box-sizing: border-box;
 }
 
 :root {
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
+
+/* ---------- BASE ---------- */
 
 html,
 body,
@@ -17,19 +18,15 @@ body,
   min-height: 100%;
 }
 
-/* ---------- BACKGROUND ---------- */
+/* ---------- BACKGROUND (YOUR IMAGE) ---------- */
 
 body {
   color: #f8fafc;
-  background:
-    radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.12), transparent 40%),
-    linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
-  background-attachment: fixed;
-}
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-#root {
-  min-height: 100vh;
+  background:
+    linear-gradient(rgba(11, 16, 32, 0.55), rgba(15, 23, 42, 0.75)),
+    url("/sunset.jpg") center center / cover no-repeat fixed;
 }
 
 /* ---------- APP LAYOUT ---------- */
@@ -54,43 +51,23 @@ body {
 
 .auth-card {
   width: min(460px, 100%);
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 24px;
   padding: 28px;
-  backdrop-filter: blur(10px);
+  border-radius: 24px;
+
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
+/* ---------- TITLE (CURSIVE) ---------- */
+
+.header h1,
 .auth-card h1 {
-  margin: 0 0 8px;
-  font-size: 30px;
-}
-
-.auth-card p {
-  color: #94a3b8;
-  margin-bottom: 16px;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 16px 0;
-  color: #64748b;
-}
-
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #334155;
+  font-family: "Pacifico", cursive;
+  font-size: 32px;
+  margin: 0;
 }
 
 /* ---------- HEADER ---------- */
@@ -102,14 +79,9 @@ body {
   margin-bottom: 24px;
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 32px;
-}
-
 .header p {
-  margin: 6px 0 0;
-  color: #94a3b8;
+  color: #cbd5f5;
+  margin-top: 6px;
 }
 
 .header-actions {
@@ -122,19 +94,24 @@ body {
 .create-button {
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 10px 16px;
   color: white;
   font-weight: 600;
   cursor: pointer;
+  transition: 0.2s;
+}
+
+.create-button:hover {
+  transform: translateY(-1px);
 }
 
 .secondary-button {
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255,255,255,0.15);
   color: #e2e8f0;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
 }
 
@@ -143,17 +120,17 @@ body {
   border: none;
   color: white;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
 }
 
-/* ---------- FORM ---------- */
+/* ---------- INPUTS ---------- */
 
 .input,
 .textarea {
   width: 100%;
-  border: 1px solid #334155;
-  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(15, 23, 42, 0.6);
   color: #f8fafc;
   border-radius: 12px;
   padding: 10px;
@@ -174,11 +151,24 @@ body {
 /* ---------- COLUMN ---------- */
 
 .column {
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 18px;
+  min-height: 420px;
   padding: 12px;
-  min-height: 400px;
+  border-radius: 20px;
+
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(255,255,255,0.1);
+
+  transition: 0.2s;
 }
+
+.column-over {
+  border: 1px solid #6366f1;
+  transform: scale(1.02);
+}
+
+/* ---------- COLUMN HEADER ---------- */
 
 .column-header {
   display: flex;
@@ -187,17 +177,13 @@ body {
 }
 
 .count {
-  background: #1e293b;
-  padding: 3px 8px;
+  background: rgba(255,255,255,0.1);
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
 }
 
-.column-over {
-  border: 2px solid #6366f1;
-}
-
-/* ---------- TASK CARDS ---------- */
+/* ---------- TASK LIST ---------- */
 
 .task-list {
   display: flex;
@@ -205,21 +191,27 @@ body {
   gap: 10px;
 }
 
+/* ---------- TASK CARD ---------- */
+
 .task-card {
-  background: #1e293b;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: 16px;
+
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(6px);
+
+  border: 1px solid rgba(255,255,255,0.1);
+
   cursor: grab;
   transition: 0.2s;
 }
 
 .task-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
 }
 
-.task-card h3 {
-  margin: 0;
-  font-size: 14px;
+.task-card:active {
+  cursor: grabbing;
 }
 
 /* ---------- PRIORITY ---------- */
@@ -241,14 +233,10 @@ body {
 .empty-state {
   text-align: center;
   padding: 16px;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 /* ---------- STATUS ---------- */
-
-.status-message {
-  margin-top: 10px;
-}
 
 .status-message.error {
   color: #ef4444;
