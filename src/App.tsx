@@ -1,5 +1,5 @@
 import "./App.css"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import {
   DndContext,
@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
-import { ensureGuestSession, supabase } from "./lib/supabase"
+import { getCurrentSession, signInAsGuest, signOutUser, supabase } from "./lib/supabase"
 import type {
   ActivityLog,
   Comment,
@@ -45,6 +45,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
@@ -58,6 +59,8 @@ function App() {
   const [assigneeFilter, setAssigneeFilter] = useState("all")
   const [labelFilter, setLabelFilter] = useState("all")
 
+  const initializedRef = useRef(false)
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -67,18 +70,22 @@ function App() {
   )
 
   useEffect(() => {
+    if (initializedRef.current) return
+    initializedRef.current = true
+
     async function initializeApp() {
       try {
         setLoading(true)
         setErrorMessage("")
 
-        const signedIn = await ensureGuestSession()
+        const session = await getCurrentSession()
 
-        if (!signedIn) {
-          setErrorMessage("Guest sign-in is not enabled in Supabase.")
+        if (!session) {
+          setIsAuthenticated(false)
           return
         }
 
+        setIsAuthenticated(true)
         await fetchBoardData()
       } catch (error) {
         console.error(error)
@@ -90,6 +97,28 @@ function App() {
 
     initializeApp()
   }, [])
+
+  async function handleGuestLogin() {
+    try {
+      setLoading(true)
+      setErrorMessage("")
+
+      const session = await signInAsGuest()
+
+      if (!session) {
+        setErrorMessage("Could not create guest session.")
+        return
+      }
+
+      setIsAuthenticated(true)
+      await fetchBoardData()
+    } catch (error) {
+      console.error(error)
+      setErrorMessage("Could not start guest session.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function fetchBoardData() {
     const [
@@ -131,17 +160,7 @@ function App() {
     setTaskLabels((taskLabelsRes.data ?? []) as TaskLabel[])
   }
 
-  async function handleLogout() {
-    setErrorMessage("")
-
-    const { error } = await supabase.auth.signOut()
-
-    if (error) {
-      console.error(error.message)
-      setErrorMessage(`Could not log out: ${error.message}`)
-      return
-    }
-
+  function clearLocalState() {
     setTasks([])
     setTeamMembers([])
     setComments([])
@@ -150,8 +169,28 @@ function App() {
     setTaskAssignees([])
     setTaskLabels([])
     setSelectedTask(null)
+    setTitle("")
+    setDescription("")
+    setPriority("normal")
+    setDueDate("")
+    setSearchQuery("")
+    setPriorityFilter("all")
+    setAssigneeFilter("all")
+    setLabelFilter("all")
+  }
 
-    window.location.reload()
+  async function handleLogout() {
+    setErrorMessage("")
+
+    const success = await signOutUser()
+
+    if (!success) {
+      setErrorMessage("Could not log out.")
+      return
+    }
+
+    clearLocalState()
+    setIsAuthenticated(false)
   }
 
   async function logActivity(taskId: string, action: string, details: string) {
@@ -479,6 +518,23 @@ function App() {
       }
     )
   }, [filteredTasks])
+
+  if (!loading && !isAuthenticated) {
+    return (
+      <div className="app-shell">
+        <div className="app auth-screen">
+          <div className="auth-card">
+            <h1>Sunset Flow</h1>
+            <p>Start one guest session and keep using it on this browser until you log out.</p>
+            <button type="button" className="create-button" onClick={handleGuestLogin}>
+              Continue as Guest
+            </button>
+            {errorMessage && <div className="status-message error">{errorMessage}</div>}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">

@@ -9,20 +9,33 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export async function ensureGuestSession() {
+export async function getCurrentSession() {
   const { data, error } = await supabase.auth.getSession()
 
   if (error) {
     console.error("Error getting session:", error.message)
-    return false
+    return null
   }
 
-  if (data.session) return true
+  return data.session
+}
 
-  const { error: signInError } = await supabase.auth.signInAnonymously()
+export async function signInAsGuest() {
+  const { data, error } = await supabase.auth.signInAnonymously()
 
-  if (signInError) {
-    console.error("Anonymous sign-in failed:", signInError.message)
+  if (error) {
+    console.error("Anonymous sign-in failed:", error.message)
+    return null
+  }
+
+  return data.session
+}
+
+export async function signOutUser() {
+  const { error } = await supabase.auth.signOut()
+
+  if (error) {
+    console.error("Sign-out failed:", error.message)
     return false
   }
 
